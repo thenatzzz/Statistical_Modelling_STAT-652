@@ -1,0 +1,263 @@
+# clear var
+rm(list=ls(all=TRUE))
+# Clear plots
+dev.off()  # But only if there IS a plot
+set.seed(46685326,kind="Mersenne-Twister")
+
+###### HW 19 #################
+ve <-  read.csv("vehicle.csv")
+ve$class = factor(ve$class, labels=c('2D','4D','BUS','VAN'))
+perm <- sample(x=nrow(ve))
+set1 <- ve[which(perm <= 3*nrow(ve)/4),]
+set2 <- ve[which(perm >  3*nrow(ve)/4),]
+head(set1,6)
+head(set2,6)
+
+#### 1 ###
+#### a
+library(klaR)
+# NBn <- NaiveBayes(x=set1[,-19], grouping=set1[,19], 
+#                   usekernel=FALSE)
+NBn <- NaiveBayes(x=ve[,-19], grouping=ve[,19], 
+                  usekernel=TRUE)
+
+#  Comment this plot out if you don't want to see the 
+#    estimated distributions of Xj within classes
+x11(h=7,w=10)
+par(mfrow=c(3,3))
+plot(NBn, lwd=2, main="NB Kernel, no PC")
+
+
+#### 2###
+# No PC, Normal
+NBn <- NaiveBayes(x=set1[,-19], grouping=set1[,19], 
+                  usekernel=FALSE)
+NBn.pred.train <- predict(NBn, newdata=set1[,-19])
+table(NBn.pred.train$class, set1[,19], dnn=c("Predicted","Observed"))
+
+NBn.pred.test <- predict(NBn, newdata=set2[,-19])
+table(NBn.pred.test$class, set2[,19], dnn=c("Predicted","Observed"))
+
+(NBnmisclass.train <- mean(ifelse(NBn.pred.train$class == set1$class, yes=0, no=1)))
+(NBnmisclass.test <- mean(ifelse(NBn.pred.test$class == set2$class, yes=0, no=1)))
+
+
+# No PC, Kernel
+NBk <- NaiveBayes(x=set1[,-19], grouping=set1[,19], 
+                  usekernel=TRUE)
+NBk.pred.train <- predict(NBk, newdata=set1[,-19])
+table(NBk.pred.train$class, set1[,19], dnn=c("Predicted","Observed"))
+
+NBk.pred.test <- predict(NBk, newdata=set2[,-19])
+table(NBk.pred.test$class, set2[,19], dnn=c("Predicted","Observed"))
+(NBkmisclass.train <- mean(ifelse(NBk.pred.train$class == set1$class, yes=0, no=1)))
+(NBkmisclass.test <- mean(ifelse(NBk.pred.test$class == set2$class, yes=0, no=1)))
+
+
+### PC ####
+pc <-  prcomp(x=set1[,-19], scale.=TRUE)
+xi.1 <- data.frame(pc$x,class = as.factor(set1$class))
+xi.2 <- data.frame(predict(pc, newdata=set2), class = as.factor(set2$class))
+
+# PC, Normal
+NBn.pc <- NaiveBayes(x=xi.1[,-19], grouping=xi.1[,19], usekernel=FALSE)
+NBnpc.pred.train <- predict(NBn.pc, newdata=xi.1[,-19], type="class")
+table(NBnpc.pred.train$class, xi.1[,19], dnn=c("Predicted","Observed"))
+
+NBnpc.pred.test <- predict(NBn.pc, newdata=xi.2[,-19], type="class")
+table(NBnpc.pred.test$class, xi.2[,19], dnn=c("Predicted","Observed"))
+(NBnPCmisclass.train <- mean(ifelse(NBnpc.pred.train$class == xi.1$class, yes=0, no=1)))
+(NBnPCmisclass.test <- mean(ifelse(NBnpc.pred.test$class == xi.2$class, yes=0, no=1)))
+
+
+# PC, Kernel
+NBk.pc <- NaiveBayes(x=xi.1[,-19], grouping=xi.1[,19], usekernel=TRUE)
+NBkpc.pred.train <- predict(NBk.pc, newdata=xi.1[,-19], type="class")
+table(NBkpc.pred.train$class, xi.1[,19], dnn=c("Predicted","Observed"))
+
+NBkpc.pred.test <- predict(NBk.pc, newdata=xi.2[,-19], type="class")
+table(NBkpc.pred.test$class, xi.2[,19], dnn=c("Predicted","Observed"))
+
+warnings()
+
+# Error rates
+(NBkPCmisclass.train <- mean(ifelse(NBkpc.pred.train$class == xi.1$class, yes=0, no=1)))
+(NBkPCmisclass.test <- mean(ifelse(NBkpc.pred.test$class == xi.2$class, yes=0, no=1)))
+
+
+######################################
+############# HW 20 ###############
+# clear var
+rm(list=ls(all=TRUE))
+# Clear plots
+dev.off()  # But only if there IS a plot
+set.seed(46685326,kind="Mersenne-Twister")
+
+###### HW 19 #################
+ve <-  read.csv("vehicle.csv")
+ve$class = factor(ve$class, labels=c('2D','4D','BUS','VAN'))
+perm <- sample(x=nrow(ve))
+set1 <- ve[which(perm <= 3*nrow(ve)/4),]
+set2 <- ve[which(perm >  3*nrow(ve)/4),]
+
+set.seed(8646824,kind="Mersenne-Twister")
+library(rpart)
+library(rpart.plot)
+# set.seed(46685326,kind="Mersenne-Twister")
+
+#####1. 
+##a.& b.
+wh.tree <- rpart(data=set1, class ~ ., method="class")
+printcp(wh.tree)
+round(wh.tree$cptable[,c(2:5,1)],4)
+x11(h=10, w=10)
+prp(wh.tree, type=1, extra=1, main="Original full tree")
+
+# Plot of the cross-validation for the complexity parameter.
+##  NOTE: Can be very variable, depending on CV partitioning
+x11(h=7, w=10, pointsize=10)
+plotcp(wh.tree)
+
+##
+wh.tree <- rpart(data=set1, class ~ ., method="class", cp=0)
+printcp(wh.tree)
+round(wh.tree$cptable[,c(2:5,1)],4)
+
+
+library(rpart.plot)
+x11(h=10, w=10)
+prp(wh.tree, type=1, extra=1, main="Original full tree")
+
+# Plot of the cross-validation for the complexity parameter.
+##  NOTE: Can be very variable, depending on CV partitioning
+x11(h=7, w=10, pointsize=10)
+plotcp(wh.tree)
+
+### c. #########
+# Find location of minimum error
+cpt = wh.tree$cptable
+minrow <- which.min(cpt[,4])
+# Take geometric mean of cp values at min error and one step up 
+cplow.min <- cpt[minrow,1]
+cpup.min <- ifelse(minrow==1, yes=1, no=cpt[minrow-1,1])
+cp.min <- sqrt(cplow.min*cpup.min)
+cp.min
+
+# Find smallest row where error is below +1SE
+se.row <- min(which(cpt[,4] < cpt[minrow,4]+cpt[minrow,5]))
+# Take geometric mean of cp values at min error and one step up 
+cplow.1se <- cpt[se.row,1]
+cpup.1se <- ifelse(se.row==1, yes=1, no=cpt[se.row-1,1])
+cp.1se <- sqrt(cplow.1se*cpup.1se)
+cp.1se
+# Creating a pruned tree using a selected value of the CP by CV.
+wh.prune.cv.1se <- prune(wh.tree, cp=cp.1se)
+# Creating a pruned tree using a selected value of the CP by CV.
+wh.prune.cv.min <- prune(wh.tree, cp=cp.min)
+
+# Plot the pruned trees
+x11(h=12, w=18)
+par(mfrow=c(1,2))
+prp(wh.prune.cv.1se, type=1, extra=1, main="Pruned CV-1SE tree")
+prp(wh.prune.cv.min, type=1, extra=1, main="Pruned CV-min tree")
+
+
+# Predict results of classification. "Vector" means store class as a number
+pred.train.cv.1se <- predict(wh.prune.cv.1se, newdata=set1, type="class")
+pred.train.cv.min <- predict(wh.prune.cv.min, newdata=set1, type="class")
+pred.train.full <- predict(wh.tree, newdata=set1, type="class")
+
+# Predict results of classification. "Vector" means store class as a number
+pred.test.cv.1se <- predict(wh.prune.cv.1se, newdata=set2, type="class")
+pred.test.cv.min <- predict(wh.prune.cv.min, newdata=set2, type="class")
+pred.test.full <- predict(wh.tree, newdata=set2, type="class")
+
+(misclass.train.cv.1se <- mean(ifelse(pred.train.cv.1se == set1$class, yes=0, no=1)))
+(misclass.train.cv.min <- mean(ifelse(pred.train.cv.min == set1$class, yes=0, no=1)))
+(misclass.train.full <- mean(ifelse(pred.train.full == set1$class, yes=0, no=1)))
+
+(misclass.test.cv.1se <- mean(ifelse(pred.test.cv.1se == set2$class, yes=0, no=1)))
+(misclass.test.cv.min <- mean(ifelse(pred.test.cv.min == set2$class, yes=0, no=1)))
+(misclass.test.full <- mean(ifelse(pred.test.full == set2$class, yes=0, no=1)))
+
+
+
+########2. ##################
+library(randomForest)
+wh.rf <- randomForest(data=set1, class~., 
+                      importance=TRUE, keep.forest=TRUE)
+wh.rf             # more useful here
+
+round(importance(wh.rf),3) # Print out importance measures
+x11(h=7,w=15)
+varImpPlot(wh.rf) # Plot of importance measures; more interesting with more variables
+
+
+# Predict results of classification. 
+pred.rf.train <- predict(wh.rf, newdata=set1, type="response")
+pred.rf.test <- predict(wh.rf, newdata=set2, type="response")
+#"vote" gives proportions of trees voting for each class
+pred.rf.vtrain <- predict(wh.rf, newdata=set1, type="vote")
+pred.rf.vtest <- predict(wh.rf, newdata=set2, type="vote")
+head(cbind(pred.rf.test,pred.rf.vtest))
+
+(misclass.train.rf <- mean(ifelse(pred.rf.train == set1$class, yes=0, no=1)))
+(misclass.test.rf <- mean(ifelse(pred.rf.test == set2$class, yes=0, no=1)))
+
+####### 3.###########
+reps=5
+varz = c(2,4,6,10,18)
+nodez = c(1,3,5,7,10)
+
+NS = length(nodez)
+M = length(varz)
+rf.oob = matrix(NA, nrow=M*NS, ncol=reps)
+rf.oob
+for(r in 1:reps){
+  counter=1
+  for(m in varz){
+    for(ns in nodez){
+      wh.rfm <- randomForest(data=set1, class~., 
+                             mtry=m, nodesize=ns)
+      rf.oob[counter,r] = mean(predict(wh.rfm, type="response") != set1$class)
+      counter=counter+1
+    }
+  }
+}
+
+parms = expand.grid(nodez,varz)
+row.names(rf.oob) = paste(parms[,2], parms[,1], sep="|")
+
+mean.oob = apply(rf.oob, 1, mean)
+mean.oob[order(mean.oob)]
+
+min.oob = apply(rf.oob, 2, min)
+
+# x11(h=7,w=10,pointsize=8)
+boxplot(rf.oob, use.cols=FALSE, las=2)
+
+# x11(h=7,w=10,pointsize=8)
+boxplot(t(rf.oob)/min.oob, use.cols=TRUE, las=2, 
+        main="RF Tuning Variables and Node Sizes")
+
+# Suggested parameters are mtry=6, nodesize=7
+
+wh.rf.tun <- randomForest(data=set1, class~., mtry=6, nodesize=7,
+                          importance=TRUE, keep.forest=TRUE)
+
+### Is 500 enough trees???  Probably so.  
+# x11(h=7,w=6,pointsize=12)
+plot(wh.rf.tun)
+
+# Predict results of classification. 
+pred.rf.train.tun <- predict(wh.rf.tun, newdata=set1, type="response")
+pred.rf.test.tun <- predict(wh.rf.tun, newdata=set2, type="response")
+#"vote" gives proportions of trees voting for each class
+pred.rf.vtrain.tun <- predict(wh.rf.tun, newdata=set1, type="vote")
+pred.rf.vtest.tun <- predict(wh.rf.tun, newdata=set2, type="vote")
+head(cbind(pred.rf.test.tun,pred.rf.vtest.tun))
+
+(misclass.train.rf.tun <- mean(ifelse(pred.rf.train.tun == set1$class, yes=0, no=1)))
+(misclass.test.rf.tun <- mean(ifelse(pred.rf.test.tun == set2$class, yes=0, no=1)))
+
+
